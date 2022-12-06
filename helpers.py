@@ -3,7 +3,9 @@ import collections
 from collections import defaultdict, OrderedDict
 from transformers import Trainer, EvalPrediction
 from transformers.trainer_utils import PredictionOutput
+from infersent.models import InferSent
 from typing import Tuple
+import torch
 from tqdm.auto import tqdm
 
 QA_MAX_ANSWER_LENGTH = 30
@@ -312,3 +314,16 @@ class QuestionAnsweringTrainer(Trainer):
         self.control = self.callback_handler.on_evaluate(self.args, self.state,
                                                          self.control, metrics)
         return metrics
+
+
+def get_infersent_embedder(K=100000):
+    V = 2
+    MODEL_PATH = 'encoder/infersent%s.pkl' % V
+    params_model = {'bsize': 64, 'word_emb_dim': 300, 'enc_lstm_dim': 2048,
+                    'pool_type': 'max', 'dpout_model': 0.0, 'version': V}
+    infersent = InferSent(params_model)
+    infersent.load_state_dict(torch.load(MODEL_PATH))
+    W2V_PATH = 'fastText/crawl-300d-2M.vec'
+    infersent.set_w2v_path(W2V_PATH)
+    infersent.build_vocab_k_words(K=K)
+    return infersent
